@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: apollo-one-shot-servicing-
+  namespace: filenet
+  labels:
+    app: apollo-one-shot-servicing
+spec:
+  containers:
+    - name: apollo-one-shot
+      image: ubi9/ubi:9.0.0
+      command: ["/bin/bash"]
+      args:
+        ["-c","cd /usr; yum upgrade -y; yum install nmap-ncat -y; while true; do echo 'Apollo one-shot servicing pod - Ready - Enter it via Terminal and \"bash -l\" - Delete it after you are done.'; sleep 300; done"]      
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        capabilities:
+          add:
+          - "SETFCAP"

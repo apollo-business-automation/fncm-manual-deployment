@@ -1,0 +1,5 @@
+optional-prereqs/mirror-registry/pull-secret*
+case
+.DS_Store
+optional-prereqs/mirror-registry/mirror-registry.tar.gz
+optional-prereqs/mirror-registry/oc-mirror.tar.gz

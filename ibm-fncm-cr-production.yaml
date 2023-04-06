@@ -1,0 +1,162 @@
+apiVersion: fncm.ibm.com/v1
+kind: FNCMCluster
+metadata:
+  name: fncmdeploy
+  labels:
+    app.kubernetes.io/instance: ibm-fncm
+    app.kubernetes.io/managed-by: ibm-fncm
+    app.kubernetes.io/name: ibm-fncm
+    release: 5.5.8
+spec:
+  appVersion: 21.0.3
+  ibm_license: accept
+  shared_configuration:
+    sc_deployment_context: FNCM
+    image_pull_secrets: 
+      - admin.registrykey
+    sc_image_repository: cp.icr.io
+    root_ca_secret: icp4a-root-ca
+    sc_deployment_patterns: content
+    sc_optional_components:
+    sc_deployment_type: enterprise
+    sc_deployment_platform: OCP
+    sc_deployment_hostname_suffix: "{{ meta.namespace }}.<OCP apps hostname>"
+    trusted_certificate_list: []
+    storage_configuration:
+      sc_slow_file_storage_classname: "<RWX StorageClass name>"
+      sc_medium_file_storage_classname: "<RWX StorageClass name>"
+      sc_fast_file_storage_classname: "<RWX StorageClass name>"
+  ldap_configuration:
+    lc_selected_ldap_type: Microsoft Active Directory
+    ## The name of the LDAP server to connect
+    lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    lc_ldap_port: "<Required>"
+
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    lc_bind_secret: ldap-bind-secret 
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_base_dn: "<Required>"
+
+    lc_ldap_ssl_enabled: false
+  
+    ## The LDAP user name attribute.  One possible value is "*:cn". Refer to Knowlege Center for more info.
+    lc_ldap_user_name_attribute: "*:cn"
+
+    ## The LDAP user display name attribute. One possible value is "cn". Refer to Knowlege Center for more info.
+    lc_ldap_user_display_name_attr: "cn"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn". Refer to Knowlege Center for more info.
+    lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value is ":cn". Refer to Knowlege Center for more info.
+    lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))"
+    lc_ldap_group_membership_search_filter: "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member"
+    lc_ldap_group_member_id_map: "groupofnames:member"
+
+    ad:
+      lc_ad_gc_host: "<Required>"
+      lc_ad_gc_port: "<Required>"
+      lc_user_filter: "(&(cn=%v)(objectclass=person))"
+      lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+  datasource_configuration:
+    dc_gcd_datasource:
+      dc_database_type: db2
+      dc_common_gcd_datasource_name: GCD
+      dc_common_gcd_xa_datasource_name: GCDXA
+      database_servername: <DB server hostname>
+      database_name: <DB name for GCD>
+      database_port: <DB server port>
+    dc_os_datasources:
+      - dc_database_type: db2
+        dc_os_label: os1
+        dc_common_os_datasource_name: OS1
+        dc_common_os_xa_datasource_name: OS1XA
+        database_servername: <DB server hostname>
+        database_name: <DB name for OS1>
+        database_port: <DB server port>
+    dc_icn_datasource:
+      dc_database_type: db2
+      dc_common_icn_datasource_name: ECMClientDS
+      database_servername: <DB server hostname>
+      database_port: <DB server port>
+      database_name: <DB name for ICN>
+  ecm_configuration:
+    fncm_secret_name: ibm-fncm-secret
+    cpe:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/cpe
+        tag: ga-558-p8cpe-if004
+      replica_count: 1
+      cpe_production_setting:
+        gcd_jndi_name: GCD
+        gcd_jndixa_name: GCDXA
+        license_model: ICF.UVU
+      auto_scaling:
+        enabled: false     
+    graphql:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/graphql
+        tag: ga-558-p8cgql-if004    
+      replica_count: 1
+      graphql_production_setting:
+        enable_graph_iql: true
+        license_model: ICF.UVU
+  navigator_configuration:
+    image:
+      repository: cp.icr.io/cp/cp4a/ban/navigator
+      tag: ga-3011-icn-if008
+    ban_secret_name: ibm-ban-secret
+    replica_count: 1
+    icn_production_setting:
+      jvm_customize_options: ""
+      icn_table_space: <Table Space name for ICN>
+    auto_scaling:
+      enabled: false    
+  # initialize_configuration:
+  #   ic_domain_creation:
+  #     domain_name: P8DOMAIN
+  #     encryption_key: 128
+  #   ic_ldap_creation:
+  #     ic_ldap_admin_user_name:
+  #       - <Username of CPE/ICN admin user who is available in AD>
+  #     ic_ldap_admins_groups_name:
+  #       - <Groupname of CPE admins available in AD>
+  #     ic_ldap_name: ldap
+  #   ic_obj_store_creation:
+  #     object_stores:
+  #       - oc_cpe_obj_store_display_name: OS1
+  #         oc_cpe_obj_store_symb_name: OS1
+  #         oc_cpe_obj_store_conn:
+  #           name: OS1_dbconnection
+  #           dc_os_datasource_name: OS1
+  #           dc_os_xa_datasource_name: OS1XA
+  #         oc_cpe_obj_store_admin_user_groups:
+  #           - <Username of CPE/ICN admin user who is available in AD>
+  #           - <Groupname of CPE admins available in AD>
+  #         oc_cpe_obj_store_asa_name: os1_asa
+  #         oc_cpe_obj_store_asa_file_systems_storage_device_name: os1_file_system_storage
+  #         oc_cpe_obj_store_asa_root_dir_path: /opt/ibm/asa/os1_storagearea1
+  #   ic_icn_init_info:
+  #     icn_repos:
+  #       - add_repo_id: OS1
+  #         add_repo_os_sym_name: OS1
+  #         add_repo_os_dis_name: OS1
+  #     icn_desktop:
+  #       - add_desktop_id: OS1
+  #         add_desktop_name: OS1
+  #         add_desktop_description: OS1
+  #         add_desktop_repo_id: OS1
+  # verify_configuration:
+  #   vc_icn_verification:
+  #     - vc_icn_repository: OS1
+  #       vc_icn_desktop_id: OS1    

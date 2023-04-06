@@ -1,0 +1,15 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: phpldapadmin
+  namespace: openldap
+spec:
+  to:
+    kind: Service
+    name: openldap-phpldapadmin
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+  wildcardPolicy: None

@@ -1,1 +1,285 @@
-# fncm-manual-deployment
+# FileNet Content Manager Production deployment manual installation ✍️<!-- omit in toc -->
+
+## Disclaimer ✋
+
+This is **not** an official IBM documentation.  
+Absolutely no warranties, no support, no responsibility for anything.  
+Use it on your own risk and always follow the official IBM documentations.  
+It is always your responsibility to make sure you are license compliant when using this repository to install FileNet Content Manager.
+
+Please do not hesitate to create an issue here if needed. Your feedback is appreciated.
+
+Not for production use. Suitable for Demo and PoC environments - but with Production deployment.  
+
+## Version
+
+**This guide is written for the 5.5.8 version of FileNet Content Manager**
+
+## Prerequisites
+
+Based on the [Preparing your cluster documentation](https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-v555-later-preparing-your-cluster).
+
+- OpenShift Container Platform (OCP) cluster version 4.8 and later with sufficient resources
+- IBM entitlement key from https://myibm.ibm.com/products-services/containerlibrary
+- File RWX Storage Class
+- Block RWO Storage Class (optional)
+- Cluster admin user
+- Cluster non-admin user
+- External Systems Connectivity
+  - Database
+  - LDAP
+  - S3 (when using S3 for advanced storage area)
+
+## Needed tooling
+
+- oc
+- podman
+- git
+
+
+## Side-by-side Scenario
+### Prepare
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-v555-later-preparing-your-cluster
+
+
+#### Local repo setup
+
+**Needed for the Air Gap installation where the target OpenShift Container Platform has no internet connectivity**
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=gaci-v558-earlier-getting-access-images-from-passport-advantage
+
+Download the packages from PPA and load the images. [IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides archives (.tgz) for the software. To view the list of Passport Advantage eAssembly installation images, refer to the download document.
+* M03N7ML IBM FileNet Content Platform Engine V5.5.8 Linux x86 Container Multilingual (mandatory)
+* M03N9ML IBM FileNet Content Manager Operator V5.5.8 Linux x86 Container Multilingual (mandatory)
+* M03NHML FileNet Content Search Services V5.5.8 Linux x86 Container Multilingual (optional)
+* M03NVML IBM Content Navigator V3.0.11 Linux x86 Container Multilingual (mandatory)
+* M03N8ML IBM FileNet Content Services GraphQL API V5.5.8 Linux x86 Container Multilingual (mandatory)
+* G01J0ML IBM FileNet CMIS V3.0.6 Linux x86 Container Multilingual (optional)
+
+
+```bash
+git clone -b 5.5.8 https://github.com/ibm-ecm/container-samples
+cd container-samples
+oc login https://<cluster-ip>:<port> -u <cluster-admin> -p <password>
+podman login $(oc registry info) -u <administrator> -p $(oc whoami -t) 
+cd scripts
+# login as the builder account which has permissions to push and pull on the image registry, or use any other user that is appropriate
+oc registry login -z builder 
+./loadimages.sh -p <PPA-ARCHIVE>.tgz  -r $(oc get route default-route -n openshift-image-registry --template='{{ .spec.host }}')/cp/cp4a/fncm/
+oc get is
+```
+
+And then you need to provide the mapping to go to internal OpenShift image registry for the FNCM container images instead of the public one.
+
+```bash
+oc apply -f image-content-source-policy.yaml
+```
+
+#### Gathering the values for the installation (When moving from traditional)
+
+Follow https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=mfpcwfcme-preparing-your-source-filenet-content-manager-environment-move 
+
+The following is example, not exhaustive, of what is required to be gathered:
+
+* [Gather information about Storage and Advanced Storage Areas](https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=move-arranging-your-storage)
+* [Gather information about Directory Server](https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=move-gathering-values-your-custom-resource-definition)
+* [Gather information about Object Stores](https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=move-gathering-values-your-custom-resource-definition)
+* [Backup the IBM Configuration DB and Directory](https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=move-backing-up-content-navigator-configuration-directory)
+
+#### Gathering Certificates
+
+For any external service that TLS should be used for, CRT file has to be downloaded and added to the trusted certificates in the customer resource definition for FileNet. (Example can be S3 buckets, secured DB or LDAP connections etc.)
+
+#### Directory Server
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-preparing-p8-platform-directory-server
+
+#### FNCM DB
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-preparing-target-filenet-content-manager 
+
+As stated "This task doesn't apply in a move scenario because your databases are already configured to support your source environment. However, the additional tasks for creating secrets for SSL configuration data are required".
+
+**For the DB2:** https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=pppd-creating-secrets-protect-sensitive-db2-ssl-configuration-data
+
+
+#### ICN DB
+
+ICN on Containers should have separate DB and everything recreated based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-preparing-target-filenet-content-manager where it is stated that "If your scenario includes maintaining a traditional WebSphere Application Server deployment alongside the container deployment, you need an additional configuration database for Navigator in the container environment" 
+
+Prepare 1 DB - ICN and access user permissions that you normally do and also review the SSL configuration, here for DB2:  https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=pcnd-creating-secrets-protect-sensitive-db2-ssl-configuration-data
+
+#### Create project for the deployment
+
+```bash
+oc new-project filenet
+```
+
+#### Secrets
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-creating-secrets-protect-sensitive-configuration-data
+
+**FNCM secret** 
+Values need to be adjusted to real ones. OS1 is a general object store, replace with yours, any number of Object Stores can be provided here.
+```bash
+oc -n filenet create secret generic ibm-fncm-secret \
+--from-literal=gcdDBUsername="{{ DB username for GCD }}" \
+--from-literal=gcdDBPassword="{{ DB password for GCD }}" \
+--from-literal=os1DBUsername="{{ DB username for OS1 }}" \
+--from-literal=os1DBPassword="{{ DB password for OS1 }}" \
+--from-literal=appLoginUsername="{{ Username of CPE/ICN admin user who is available in AD }}" \
+--from-literal=appLoginPassword="{{ Password of CPE/ICN admin user who is available in AD }}" \
+--from-literal=keystorePassword="{{ Password for Keystore}}" \
+--from-literal=ltpaPassword="{{ Password for LTPA }}"
+```
+
+**ICN secret**
+Values need to be adjusted to real ones. **The recommendation is to use a different DB then the traditional ICN is going to use, import the configuration from the traditional ICN and use them in parallel if needed.** This is due to the changes in the container ICN DB schema.
+```bash
+oc -n filenet create secret generic ibm-ban-secret \
+--from-literal=navigatorDBUsername="{{ DB username for ICN }}" \
+--from-literal=navigatorDBPassword="{{ DB password for ICN }}" \
+--from-literal=keystorePassword="{{ Password for Keystore}}" \
+--from-literal=ltpaPassword="{{ Password for LTPA }}" \
+--from-literal=appLoginUsername="{{ Username of CPE/ICN admin user who is available in AD }}" \
+--from-literal=appLoginPassword="{{ Password of CPE/ICN admin user who is available in AD }}"
+```
+
+**Root CA secret**
+- not in our deployment
+
+TODO external trust secrets if needed, can be added later for S3
+
+**LDAP secret ** 
+Values need to be adjusted to real once.
+```bash
+oc -n filenet create secret generic ldap-bind-secret \
+--from-literal=ldapUsername="{{ LDAP username for Bind }}" \
+--from-literal=ldapPassword="{{ LDAP password for Bind }}" 
+```    
+
+#### Storage
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-configuring-storage-content-services-environment
+
+For this deployment StorageClass dynamic provisioning is used as documents are stored in S3. (https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-creating-volumes-folders-deployment)
+
+### Operator Storage
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-preparing-storage
+
+Based on dynamically descriptors/operator-shared-pvc.yaml. Removed storageClass annotation in favor of parameter.
+
+Values need to be adjusted to real ones ({{ RWX StorageClass name }})
+```bash
+oc -n filenet create -f operator-shared-pvc.yaml
+```
+
+### Getting access to container images
+
+**When not using Air Gap installation**
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-getting-access-container-images
+
+Get entitlement key from https://myibm.ibm.com/products-services/containerlibrary
+
+```bash
+oc -n filenet create secret docker-registry admin.registrykey --docker-server=cp.icr.io --docker-username=cp --docker-password="{{ ICR key }}"
+```
+
+### Deploying the Operator
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-v557-v558-deploying-interactively-silently
+
+**For AirGap**
+
+```bash
+# get service account able to download container images when using airgap
+oc project filenet
+oc create sa image-puller 
+oc adm policy add-cluster-role-to-user system:image-puller -z image-puller 
+oc sa new-token image-puller
+```
+
+In the part bellow, use `image-puller` as the image registry user and token as the password.
+
+**Always**
+
+```bash
+cd container-samples/scripts
+# For silent installation, edit ./silentInstallVariables.sh and source it before the next command
+./deployOperator.sh
+# Finish the script installation and then monitor the operator pod until STATUS = running
+oc get pods -w 
+```
+
+Copy JDBC drivers to PVC
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-preparing-storage
+```text
+pv-root-dir
+   └── jdbc
+      ├── db2
+          └── db2jcc4.jar
+          └── db2jcc_license_cu.jar
+```
+
+Upload jdbc folder to Operator.
+
+```bash
+cd container-samples/scripts
+mkdir ./jdbc/db2
+cp <path-to-db2jcc4.jar> ./jdbc/db2/
+cp <path-to-db2jcc_license_cu.jar> ./jdbc/db2/
+pod=`oc get pod -l name=ibm-fncm-operator -o name | cut -d"/" -f 2`
+echo $pod
+oc cp jdbc/db2 $pod:/opt/ansible/share/jdbc
+```
+
+### Create CR
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=resource-creating-custom
+
+CR is file *ibm_fncm_my_cr_production.yaml* (*ibm_fncm_cr_production_FC_content.yaml* can be used for reference)
+
+Must review and fill all ```<something>``` places.
+Review whole ldap_configuration for changes specific to your AD.
+
+- Added initialization - must be omitted with existing Storage and DBs
+- CPE and ICN image tags set to newer than original GitHub based on compatibility excel from https://www.ibm.com/support/pages/filenet-p8-fix-pack-compatibility-matrices
+- Licenses need to be adjusted to your actual ones - ICF.UVU
+
+### Apply CR
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=resource-applying-custom
+
+Deployment takes some time.
+```bash
+oc apply -f ibm-fncm-my-cr-production.yaml
+```
+
+May need to update NetworkPolicy fncmdeploy-default-deny when created to permit all and restart operator if there are errors that operator cannot communicate with LDAP and DB.  
+Based on https://kubernetes.io/docs/concepts/services-networking/network-policies/#allow-all-ingress-traffic
+```yaml
+spec:
+  ingress:
+  - {}
+  egress:
+  - {} 
+```
+
+Errors in the Operator log can be searched by either *Playbook task failed* or *31m* keywords. Please Note that this Operator is actually the one for CP4BA and it also lists some task for other components then FNCM and ICN only. Unfortunately in this version some other components ansible tasks are breaking even when we are not deploying them making Operator log less readable - but I can help with that/clarify.
+
+### Post-deployment
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-completing-post-deployment-tasks
+
+### Copy operator
+
+In case of Operator code debugging is needed.
+
+```bash
+pod=`oc get pod -l name=ibm-fncm-operator -o name | cut -d"/" -f 2`
+oc cp $pod:/opt/ansible/roles roles
+```

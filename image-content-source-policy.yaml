@@ -1,0 +1,9 @@
+apiVersion: operator.openshift.io/v1alpha1
+kind: ImageContentSourcePolicy
+metadata:
+  name: ibm-container-registry-local-csp
+spec: 
+  repositoryDigestMirrors:
+    - mirrors:
+      - image-registry.openshift-image-registry.svc:5000
+      source: cp.icr.io

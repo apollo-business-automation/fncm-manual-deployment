@@ -1,0 +1,16 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: operator-shared-pvc
+  labels:
+    app.kubernetes.io/instance: ibm-fncm
+    app.kubernetes.io/managed-by: ibm-fncm
+    app.kubernetes.io/name: ibm-fncm
+    release: 5.5.8
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "{{ RWX StorageClass name }}"
+  resources:
+    requests:
+      storage: 1Gi
