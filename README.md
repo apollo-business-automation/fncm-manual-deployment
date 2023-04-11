@@ -70,6 +70,8 @@ oc registry login -z builder
 oc get is
 ```
 
+Additionally, if you want to upgrade on the certain fix pack, please download the respective containers from the [IBM Fix Central](https://www.ibm.com/support/fixcentral), make sure you search there for Container versions of Fix Packs and for 5.5.8 version of FileNet and 3.0.11 version of IBM Content Navigator. Also, leverage the following [FileNet P8 Fix Pack Compatibility Matrices](https://www.ibm.com/support/pages/filenet-p8-fix-pack-compatibility-matrices) which shows not only versions of fix packs, but also image tags and versions for use in the deployment later.
+
 And then you need to provide the mapping to go to internal OpenShift image registry for the FNCM container images instead of the public one.
 
 ```bash
