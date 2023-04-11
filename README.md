@@ -20,9 +20,9 @@ Not for production use. Suitable for Demo and PoC environments - but with Produc
 Based on the [Preparing your cluster documentation](https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-v555-later-preparing-your-cluster).
 
 - OpenShift Container Platform (OCP) cluster version 4.8 and later with sufficient resources
-- IBM entitlement key from https://myibm.ibm.com/products-services/containerlibrary
-- File RWX Storage Class
-- Block RWO Storage Class (optional)
+- (For Online Installation) IBM entitlement key from https://myibm.ibm.com/products-services/containerlibrary
+- (mandatory) File RWX Storage Class
+- (optional) Block RWO Storage Class
 - Cluster admin user
 - Cluster non-admin user
 - External Systems Connectivity
@@ -41,7 +41,6 @@ Based on the [Preparing your cluster documentation](https://www.ibm.com/docs/en/
 ### Prepare
 
 Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-v555-later-preparing-your-cluster
-
 
 #### Local repo setup
 
@@ -95,7 +94,7 @@ For any external service that TLS should be used for, CRT file has to be downloa
 
 #### Directory Server
 
-Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments-preparing-p8-platform-directory-server
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-authenticating-authorizing-in-filenet-content-manager 
 
 #### FNCM DB
 
@@ -105,12 +104,11 @@ As stated "This task doesn't apply in a move scenario because your databases are
 
 **For the DB2:** https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=pppd-creating-secrets-protect-sensitive-db2-ssl-configuration-data
 
-
 #### ICN DB
 
-ICN on Containers should have separate DB and everything recreated based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-preparing-target-filenet-content-manager where it is stated that "If your scenario includes maintaining a traditional WebSphere Application Server deployment alongside the container deployment, you need an additional configuration database for Navigator in the container environment" 
+ICN on Containers should have separate DB and everything recreated based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-preparing-target-filenet-content-manager where it is stated that **"If your scenario includes maintaining a traditional WebSphere Application Server deployment alongside the container deployment, you need an additional configuration database for Navigator in the container environment" **
 
-Prepare 1 DB - ICN and access user permissions that you normally do and also review the SSL configuration, here for DB2:  https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=pcnd-creating-secrets-protect-sensitive-db2-ssl-configuration-data
+**Prepare 1 DB** - ICN and access user permissions that you normally do and also review the SSL configuration, here for DB2:  https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=pcnd-creating-secrets-protect-sensitive-db2-ssl-configuration-data
 
 #### Create project for the deployment
 
@@ -151,15 +149,19 @@ oc -n filenet create secret generic ibm-ban-secret \
 **Root CA secret**
 - not in our deployment
 
-TODO external trust secrets if needed, can be added later for S3
+**External TLS Secrets** (such as for S3)
+https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=services-importing-certificate-external-service 
 
-**LDAP secret ** 
+**LDAP Bind User Secret** 
 Values need to be adjusted to real once.
 ```bash
 oc -n filenet create secret generic ldap-bind-secret \
 --from-literal=ldapUsername="{{ LDAP username for Bind }}" \
 --from-literal=ldapPassword="{{ LDAP password for Bind }}" 
 ```    
+
+**LDAP SSL Secret**
+https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-configuring-ssl-enabled-ldap 
 
 #### Storage
 
