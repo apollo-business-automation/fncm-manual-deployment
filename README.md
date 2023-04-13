@@ -106,7 +106,7 @@ As stated "This task doesn't apply in a move scenario because your databases are
 
 #### ICN DB
 
-ICN on Containers should have separate DB and everything recreated based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-preparing-target-filenet-content-manager where it is stated that **"If your scenario includes maintaining a traditional WebSphere Application Server deployment alongside the container deployment, you need an additional configuration database for Navigator in the container environment" **
+ICN on Containers should have separate DB and everything recreated based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=environment-preparing-target-filenet-content-manager where it is stated that **"If your scenario includes maintaining a traditional WebSphere Application Server deployment alongside the container deployment, you need an additional configuration database for Navigator in the container environment"**
 
 **Prepare 1 DB** - ICN and access user permissions that you normally do and also review the SSL configuration, here for DB2:  https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=pcnd-creating-secrets-protect-sensitive-db2-ssl-configuration-data
 
@@ -192,11 +192,18 @@ Get entitlement key from https://myibm.ibm.com/products-services/containerlibrar
 oc -n filenet create secret docker-registry admin.registrykey --docker-server=cp.icr.io --docker-username=cp --docker-password="{{ ICR key }}"
 ```
 
+**When using your own registry**
+
+```bash
+oc -n filenet create secret docker-registry admin.registrykey --docker-server=<your registry> --docker-username=<your user> --docker-password=<your password>
+```
+
+
 ### Deploying the Operator
 
 Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-v557-v558-deploying-interactively-silently
 
-**For AirGap**
+**For AirGap with OCP Internal Registry**
 
 ```bash
 # get service account able to download container images when using airgap
