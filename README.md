@@ -235,11 +235,18 @@ For this deployment StorageClass dynamic provisioning is used as documents are s
 
 Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-preparing-storage
 
-Based on dynamically descriptors/operator-shared-pvc.yaml. Removed storageClass annotation in favor of parameter.
+Based on dynamically descriptors/operator-shared-pvc.yaml.
 
 Values need to be adjusted to real ones ({{ RWX StorageClass name }})
 ```bash
 oc -n filenet create -f operator-shared-pvc.yaml
+```
+
+For logs, based on dynamically descriptors/cp4a-shared-log-pvc.yaml.
+
+Values need to be adjusted to real ones ({{ RWX StorageClass name }})
+```bash
+oc -n filenet create -f cp4a-shared-log-pvc.yaml
 ```
 
 ### Getting access to container images
