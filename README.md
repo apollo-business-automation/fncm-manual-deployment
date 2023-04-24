@@ -277,7 +277,7 @@ oc sa new-token image-puller
 
 In the part bellow, use `image-puller` as the image registry user and token as the password.
 
-**Always**
+**Using the provided script**
 
 ```bash
 cd container-samples/scripts
@@ -286,6 +286,34 @@ cd container-samples/scripts
 # Finish the script installation and then monitor the operator pod until STATUS = running
 oc get pods -w 
 ```
+
+**For Manual without the Script above**
+
+```bash
+oc apply -f ./fncm_v1_fncm_crd.yaml # this one performed by Cluster Admin, the rest by Project admin
+oc apply -f ./service_account.yaml
+oc apply -f ./role.yaml
+oc apply -f ./role_binding.yaml
+oc apply -f ./operator.yaml
+```
+
+Copy JDBC drivers to PVC
+
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-v555-v556-preparing-storage
+```text
+pv-root-dir
+   └── jdbc
+      ├── oracle
+          └── ojdbc8.jar
+```
+
+Replace file ./jdbc/oracle/ojdbc8-stub.txt with real ojdbc8.jar
+
+Upload jdbc folder to Operator.
+```bash
+pod=`oc get pod -l name=ibm-fncm-operator -o name | cut -d"/" -f 2`
+echo $pod
+oc cp jdbc $pod:/opt/ansible/share/**jdbc**
 
 Copy JDBC drivers to PVC
 
