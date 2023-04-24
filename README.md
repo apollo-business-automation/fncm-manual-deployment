@@ -46,6 +46,68 @@ Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=deployments
 
 **Needed for the Air Gap installation where the target OpenShift Container Platform has no internet connectivity**
 
+**First option is to mirror images from cp.icr.io**
+Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=gaci-v559-later-getting-access-images-from-local-image-registry 
+
+You will need a client machine (for example Bastion node) with access both to the internet and to your local image registry.
+
+**With ibm-pak**
+
+Based on https://www.ibm.com/docs/en/cloud-paks/1.0?topic=plugin-installing-by-connected-disconnected-mirroring and 
+https://www.ibm.com/docs/en/cpfs?topic=plugin-cloudctl-case-corresponding-pak-commands  
+
+```bash
+oc login https://<cluster-ip>:<port> -u <cluster-admin> -p <password>
+curl -L https://github.com/IBM/ibm-pak/releases/download/v1.5.2/oc-ibm_pak-linux-amd64.tar.gz -o oc-ibm_pak-linux-amd64.tar.gz
+tar -xf oc-ibm_pak-linux-amdd64.tar.gz
+mv oc-ibm_pak-linux-amd64 /usr/local/bin/oc-ibm_pak
+export CASE_NAME=ibm-cp-fncm-case
+export CASE_VERSION=1.4.0
+export NAMESPACE=ibm-cp-fncm
+export CASE_INVENTORY_SETUP=fncmOperatorSetup
+# Your registry url, shouldn't be ocp internal
+export TARGET_REGISTRY=<your registry>
+oc ibm-pak config repo 'IBM Cloud-Pak OCI registry' -r oci:cp.icr.io/cpopen --enable
+# To download the case
+oc ibm-pak get \
+$CASE_NAME \
+--version $CASE_VERSION
+# or $TARGET_REGISTRY/$ORGANIZATION for certain organisation
+oc ibm-pak generate mirror-manifests \
+   $CASE_NAME \
+   $TARGET_REGISTRY \
+   --version $CASE_VERSION
+
+# to list mirrored images
+oc ibm-pak describe $CASE_NAME --version $CASE_VERSION --list-mirror-images
+# Login to your target container registry, shouldn't be OCP internal one
+podman login $TARGET_REGISTRY -u <username> -p <password>
+# Get the entitlement key from https://myibm.ibm.com/products-services/containerlibrary and use it as a password (in the -p <password>)
+podman login cp.icr.io -u cp -p <password>
+export REGISTRY_AUTH_FILE=$HOME/.docker/config.json
+
+
+oc image mirror \
+ -f ~/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/images-mapping.txt \
+ --filter-by-os '.*'  \
+ -a $REGISTRY_AUTH_FILE \
+ --insecure  \
+ --skip-multiple-scopes \
+ --max-per-registry=1 \
+ --continue-on-error=true
+
+
+oc ibm-pak launch \
+$CASE_NAME \
+ --version $CASE_VERSION \
+ --action install-operator \
+ --inventory $CASE_INVENTORY_SETUP \
+ --namespace $NAMESPACE \
+ --tolerance 1
+```
+
+
+**Second Option is to download images from Passport Advantage**
 Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=gaci-v558-earlier-getting-access-images-from-passport-advantage
 
 Download the packages from PPA and load the images. [IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides archives (.tgz) for the software. To view the list of Passport Advantage eAssembly installation images, refer to the download document.
