@@ -303,24 +303,6 @@ Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-v5
 ```text
 pv-root-dir
    └── jdbc
-      ├── oracle
-          └── ojdbc8.jar
-```
-
-Replace file ./jdbc/oracle/ojdbc8-stub.txt with real ojdbc8.jar
-
-Upload jdbc folder to Operator.
-```bash
-pod=`oc get pod -l name=ibm-fncm-operator -o name | cut -d"/" -f 2`
-echo $pod
-oc cp jdbc $pod:/opt/ansible/share/**jdbc**
-
-Copy JDBC drivers to PVC
-
-Based on https://www.ibm.com/docs/en/filenet-p8-platform/5.5.x?topic=operator-preparing-storage
-```text
-pv-root-dir
-   └── jdbc
       ├── db2
           └── db2jcc4.jar
           └── db2jcc_license_cu.jar
