@@ -297,6 +297,8 @@ oc get pods -w
 **For Manual without the Script above**
 
 ```bash
+oc apply -f ./cluster_role_binding.yaml
+oc apply -f ./cluster_role.yaml
 oc apply -f ./fncm_v1_fncm_crd.yaml # this one performed by Cluster Admin, the rest by Project admin
 oc apply -f ./service_account.yaml
 oc apply -f ./role.yaml
